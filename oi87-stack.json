@@ -1,0 +1,124 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description" : "Cloudformation template for opsworks chef 12 stack with custom layer using Ubuntu 16.",
+
+  "Mappings" : {
+    "Region2Principal" : {
+      "us-east-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "us-west-2"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "us-west-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "eu-west-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "eu-west-2"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "eu-west-3"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-southeast-1" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-northeast-1" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-northeast-2" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-northeast-3" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-southeast-2" : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ap-south-1"     : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "us-east-2"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "ca-central-1"   : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "sa-east-1"      : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" },
+      "cn-north-1"     : { "EC2Principal" : "ec2.amazonaws.com.cn", "OpsWorksPrincipal" : "opsworks.amazonaws.com.cn" },
+      "cn-northwest-1" : { "EC2Principal" : "ec2.amazonaws.com.cn", "OpsWorksPrincipal" : "opsworks.amazonaws.com.cn" },
+      "eu-central-1"   : { "EC2Principal" : "ec2.amazonaws.com", "OpsWorksPrincipal" : "opsworks.amazonaws.com" }
+    }
+
+  },
+
+  "Resources": {
+
+    "OI87Stack": {
+      "Type": "AWS::OpsWorks::Stack",
+      "Properties": {
+        "DefaultOs": "Ubuntu 16.04 LTS",
+        "ConfigurationManager": { "Name": "Chef", "Version": "12" },
+        "UseOpsworksSecurityGroups": "true",
+        "Name": { "Ref": "AWS::StackName" },
+        "ServiceRoleArn": { "Fn::GetAtt": [ "OpsWorksServiceRole", "Arn"] },
+        "DefaultInstanceProfileArn": { "Fn::GetAtt": [ "OpsWorksInstanceProfile", "Arn"] }
+      }
+    },
+
+    "OI87Layer": {
+      "Type": "AWS::OpsWorks::Layer",
+      "Properties": {
+        "StackId": { "Ref": "OI87Stack" },
+        "Name": "Custom Ubuntu",
+        "Type": "custom",
+        "Shortname": "ubuntu",
+        "InstallUpdatesOnBoot" : "true",
+        "EnableAutoHealing": "true",
+        "AutoAssignElasticIps": "false",
+        "AutoAssignPublicIps": "true"
+      }
+    },
+
+    "OI87Instance": {
+      "Type": "AWS::OpsWorks::Instance",
+      "Properties": {
+        "StackId": { "Ref": "OI87Stack" },
+        "LayerIds": [ { "Ref": "OI87Layer" } ],
+        "InstanceType": "t2.micro",
+        "RootDeviceType" : "ebs"
+      }
+    },
+
+    "OpsWorksServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [{ "Fn::FindInMap" : ["Region2Principal", {"Ref" : "AWS::Region"}, "OpsWorksPrincipal"]}] },
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "opsworks-service",
+            "PolicyDocument": {
+              "Statement": [{
+                "Effect": "Allow",
+                "Action": [ "ec2:*", "iam:PassRole", "cloudwatch:GetMetricStatistics", "elasticloadbalancing:*" ],
+                "Resource": "*"
+              }]
+            }
+          }
+        ]
+      }
+    },
+
+    "OpsWorksInstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [{ "Fn::FindInMap" : ["Region2Principal", {"Ref" : "AWS::Region"}, "EC2Principal"]}] },
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        },
+        "Path": "/"
+      }
+    },
+
+    "OpsWorksInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ { "Ref": "OpsWorksInstanceRole" } ]
+      }
+    }
+  },
+
+  "Outputs" : {
+    "StackId" : {
+      "Description" : "Stack Id for the newly created OpsWorks stack",
+      "Value" : { "Ref" : "OI87Stack" }
+    }
+
+  }
+}
