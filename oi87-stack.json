@@ -27,12 +27,20 @@
 
   },
 
+  "Parameters": {
+      "KeyName": {
+        "Type": "String",
+        "Description": "Default SSH keypair name for instances"
+      }
+  },
+
   "Resources": {
 
     "OI87Stack": {
       "Type": "AWS::OpsWorks::Stack",
       "Properties": {
         "DefaultOs": "Ubuntu 16.04 LTS",
+        "DefaultSshKeyName": { "Ref" : "KeyName" }, 
         "ConfigurationManager": { "Name": "Chef", "Version": "12" },
         "UseOpsworksSecurityGroups": "true",
         "Name": { "Ref": "AWS::StackName" },
